@@ -2,7 +2,7 @@
 #define VOGL_TEXT_RENDERER_HPP
 
 #include <string>
-#include <unordered_map>
+#include <map>
 
 #include <OpenGL/gl3.h>
 #include <ft2build.h>
@@ -37,11 +37,6 @@ public:
 
     ~TextRenderer();
 
-     // Non-copyable and non-movable
-    TextRenderer(TextRenderer &&) = delete;
-    TextRenderer(const TextRenderer &) = delete;
-    TextRenderer & operator=(const TextRenderer &) = delete;
-
     /// Binds OpenGL objects for rendering text.
     void bind();
 
@@ -67,6 +62,11 @@ public:
     void drawText(const std::string &text, float x, float y,
                   const Color &color) const;
 
+private:
+    // Non-copyable
+   TextRenderer(const TextRenderer &) {}
+   TextRenderer & operator=(const TextRenderer &) { return (*this); }
+
 protected:
     struct GlyphData {
         int x;
@@ -87,24 +87,26 @@ protected:
     void createAtlas();
 
 private:
-    GLuint texture_{0};
-    GLuint sampler_{0};
-    GLuint vbo_{0};
-    GLuint vao_{0};
+    typedef std::map<unsigned int, GlyphData> GlyphMap;
 
-    GLuint vertexShader_{0};
-    GLuint fragmentShader_{0};
-    GLuint program_{0};
-    GLuint colorUniform_{0};
-    GLuint textureUniform_{0};
+    GLuint texture_;
+    GLuint sampler_;
+    GLuint vbo_;
+    GLuint vao_;
 
-    FT_Face face_{nullptr};
-    FT_Library ft_{nullptr};
-    std::unordered_map<unsigned int, GlyphData> glyphs_;
+    GLuint vertexShader_;
+    GLuint fragmentShader_;
+    GLuint program_;
+    GLuint colorUniform_;
+    GLuint textureUniform_;
 
-    unsigned int height_{0};
-    float sx_{1};
-    float sy_{1};
+    FT_Face face_;
+    FT_Library ft_;
+    GlyphMap glyphs_;
+
+    unsigned int height_;
+    float sx_;
+    float sy_;
 };
 
 }

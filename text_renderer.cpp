@@ -38,6 +38,15 @@ namespace {
         error = std::string(log, log + len);
         return (len > 0);
     }
+
+    struct GlyphVBOData {
+        float x;
+        float y;
+        float s;
+        float t;
+        GlyphVBOData() : x(0), y(0), s(0), t(0) {}
+        GlyphVBOData(float x, float y, float s, float t) : x(x), y(y), s(s), t(t) {}
+    };
 }
 
 namespace vogl {
@@ -45,7 +54,20 @@ namespace vogl {
 //----------------------------------------------------------------------------
 
 TextRenderer::TextRenderer(const std::string &fontPath, unsigned int height)
-    : height_(height)
+    : texture_(0)
+    , sampler_(0)
+    , vbo_(0)
+    , vao_(0)
+    , vertexShader_(0)
+    , fragmentShader_(0)
+    , program_(0)
+    , colorUniform_(0)
+    , textureUniform_(0)
+    , face_(0)
+    , ft_(0)
+    , height_(height)
+    , sx_(1)
+    , sy_(1)
 {
     if(FT_Init_FreeType(&ft_) != 0) {
         std::cerr << "Unable to initialize FreeType library\n";
@@ -152,13 +174,16 @@ void TextRenderer::createAtlas() {
                                 g->bitmap.buffer);
 
                 // Set glyph data
-                glyphs_[charIndex] = {
-                    g->bitmap_left, g->bitmap_top,
-                    g->bitmap.width, g->bitmap.rows,
-                    g->advance.x >> 6, g->advance.y >> 6,
-                    x * invWidth, (x + g->bitmap.width)*invWidth,
-                    g->bitmap.rows*invHeight, 0.0f,
-                };
+                glyphs_[charIndex].x = g->bitmap_left;
+                glyphs_[charIndex].y = g->bitmap_top;
+                glyphs_[charIndex].width = g->bitmap.width;
+                glyphs_[charIndex].height = g->bitmap.rows;
+                glyphs_[charIndex].advanceX = g->advance.x >> 6;
+                glyphs_[charIndex].advanceY = g->advance.y >> 6;
+                glyphs_[charIndex].textureLeft = x * invWidth;
+                glyphs_[charIndex].textureRight = (x + g->bitmap.width)*invWidth;
+                glyphs_[charIndex].textureTop = g->bitmap.rows*invHeight;
+                glyphs_[charIndex].textureBottom = 0.0f;
 
                 x += g->bitmap.width;
             }
@@ -217,25 +242,19 @@ void TextRenderer::drawText(const std::string &text, float x, float y,
         return;
 
     glUniform4fv(colorUniform_, 1, color.rgba);
-
-    struct GlyphVBOData {
-        float x;
-        float y;
-        float s;
-        float t;
-    };
     std::vector<GlyphVBOData> vboData(text.length() * 6);
 
     size_t numVerts = 0;
     const float initialX = x;
-    for(const auto p : text) {
+    for(std::string::const_iterator iter = text.begin(); iter != text.end(); ++iter) {
+        const char p = *iter;
         if(p == '\n') {
             x = initialX;
             y -= height_*sy_;
         } else {
-            const auto glyphIter = glyphs_.find(static_cast<unsigned int>(p));
+            const GlyphMap::const_iterator glyphIter = glyphs_.find(static_cast<unsigned int>(p));
             if(glyphIter != glyphs_.end()) {
-                const auto &glyph = glyphIter->second;
+                const GlyphData &glyph = glyphIter->second;
                 const float x2 =  x + glyph.x * sx_;
                 const float y2 =  y + glyph.y * sy_;
                 const float w = glyph.width * sx_;
@@ -245,13 +264,13 @@ void TextRenderer::drawText(const std::string &text, float x, float y,
                 const float tt = glyph.textureTop;
                 const float tb = glyph.textureBottom;
 
-                vboData[numVerts++] = {x2    , y2    , tl, tb};
-                vboData[numVerts++] = {x2    , y2 - h, tl, tt};
-                vboData[numVerts++] = {x2 + w, y2    , tr, tb};
+                vboData[numVerts++] = GlyphVBOData(x2    , y2    , tl, tb);
+                vboData[numVerts++] = GlyphVBOData(x2    , y2 - h, tl, tt);
+                vboData[numVerts++] = GlyphVBOData(x2 + w, y2    , tr, tb);
 
-                vboData[numVerts++] = {x2 + w, y2    , tr, tb};
-                vboData[numVerts++] = {x2    , y2 - h, tl, tt};
-                vboData[numVerts++] = {x2 + w, y2 - h, tr, tt};
+                vboData[numVerts++] = GlyphVBOData(x2 + w, y2    , tr, tb);
+                vboData[numVerts++] = GlyphVBOData(x2    , y2 - h, tl, tt);
+                vboData[numVerts++] = GlyphVBOData(x2 + w, y2 - h, tr, tt);
 
                 x += glyph.advanceX * sx_;
                 y += glyph.advanceY * sy_;

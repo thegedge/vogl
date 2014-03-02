@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create a GLFW window and text renderer
-    auto window = glfwCreateWindow(WIN_WIDTH, WIN_HEIGHT, "VOGL Example",
-                                   nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(
+        WIN_WIDTH, WIN_HEIGHT, "VOGL Example", 0, 0);
     glfwSetKeyCallback(window, &key_callback);
     glfwMakeContextCurrent(window);
 
@@ -47,10 +47,10 @@ int main(int argc, char *argv[]) {
     glClearColor(0.95f, 0.95f, 0.95f, 1.f);
     glViewport(0, 0, WIN_WIDTH, WIN_HEIGHT);
 
-    const vogl::Color BLACK{0.f, 0.f, 0.f, 1.f};
-    const vogl::Color RED{1.f, 0.f, 0.f, 1.f};
-    const vogl::Color GREEN{0.f, 1.f, 0.f, 1.f};
-    const vogl::Color BLUE{0.f, 0.f, 1.f, 1.f};
+    const vogl::Color BLACK(0.f, 0.f, 0.f, 1.f);
+    const vogl::Color RED(1.f, 0.f, 0.f, 1.f);
+    const vogl::Color GREEN(0.f, 1.f, 0.f, 1.f);
+    const vogl::Color BLUE(0.f, 0.f, 1.f, 1.f);
 
     // Render loop
     while(glfwWindowShouldClose(window) != GL_TRUE) {
